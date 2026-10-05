@@ -18,7 +18,7 @@ async function token() {
   if (tokenCache.value && Date.now() < tokenCache.exp - 60000) return tokenCache.value;
   const body = new URLSearchParams({ client_id: process.env.KG_CLIENT_ID, client_secret: process.env.KG_CLIENT_SECRET, scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials' });
   const r = await fetch(`https://login.microsoftonline.com/${process.env.KG_TENANT_ID}/oauth2/v2.0/token`, { method: 'POST', body });
-  if (!r.ok) throw new Error('token ' + r.status);
+  if (!r.ok) { let c = ''; try { const e = await r.json(); c = (e.error_codes && e.error_codes[0] ? 'AADSTS' + e.error_codes[0] : e.error || ''); } catch (x) {} throw new Error('token ' + r.status + ' ' + c); }
   const j = await r.json(); tokenCache = { value: j.access_token, exp: Date.now() + j.expires_in * 1000 }; return j.access_token;
 }
 
@@ -44,6 +44,8 @@ app.http('contact', {
     if (kind === 'quote' && (!clean(f.company) || !clean(f.origin) || !clean(f.destination))) return { status: 400, jsonBody: { ok: false } };
 
     const from = process.env.MAIL_FROM;
+    const missing = ['KG_TENANT_ID', 'KG_CLIENT_ID', 'KG_CLIENT_SECRET', 'MAIL_FROM'].filter(k => !process.env[k]);
+    if (missing.length) return { status: 502, jsonBody: { ok: false, why: 'missing setting ' + missing.join(', ') } };
     const to = kind === 'quote' ? (process.env.QUOTE_TO || 'teamcasa@groupkangaroo.com') : (process.env.CAREERS_TO || 'hr@groupkangaroo.com');
     const rows = LABELS[kind].map(([k, lab]) => { const v = clean(f[k], k === 'notes' || k === 'message' ? LIMITS.notes : LIMITS.field); return v ? `<tr><td style="padding:6px 12px;color:#666;vertical-align:top">${lab}</td><td style="padding:6px 12px;white-space:pre-wrap"><b>${esc(v)}</b></td></tr>` : ''; }).join('');
     const subject = kind === 'quote'
@@ -64,9 +66,9 @@ app.http('contact', {
     try {
       const t = await token();
       const r = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(from)}/sendMail`, { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, saveToSentItems: false }) });
-      if (!r.ok) { ctx.error('sendMail failed', r.status, await r.text()); return { status: 502, jsonBody: { ok: false } }; }
+      if (!r.ok) { const txt = await r.text(); let c = ''; try { c = JSON.parse(txt).error.code; } catch (x) {} ctx.error('sendMail failed', r.status, txt); return { status: 502, jsonBody: { ok: false, why: 'send ' + r.status + ' ' + c } }; }
       hits.push(now); recent.set(ip, hits);
       return { status: 200, jsonBody: { ok: true } };
-    } catch (e) { ctx.error('contact error', e.message); return { status: 502, jsonBody: { ok: false } }; }
+    } catch (e) { ctx.error('contact error', e.message); return { status: 502, jsonBody: { ok: false, why: String(e.message).slice(0, 80) } }; }
   }
 });

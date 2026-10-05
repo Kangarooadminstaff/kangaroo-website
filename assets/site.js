@@ -8,7 +8,7 @@
   if (nav) nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') { nav.classList.remove('open'); mb && mb.setAttribute('aria-expanded', 'false'); } });
 
   // dispatch board: statuses advance every few seconds (sample lanes)
-  var lanes = document.querySelectorAll('.lane'), order = ['go', 'at', 'ok'];
+  var lanes = document.querySelectorAll('.lane'), order = ['ld', 'go', 'ok'];
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (lanes.length && !reduce && T.status) {
     var i = 0;
@@ -103,4 +103,86 @@
     });
   });
   var y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+})();
+
+/* hero backdrop: our lanes across North America and the Atlantic. Trucks run the highways, a ship heads down the St. Lawrence to Europe, a plane crosses to London. */
+(function () {
+  var cv = document.querySelector('.hero-map'); if (!cv || !cv.getContext) return;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var g = cv.getContext('2d'), bin; try { bin = atob(cv.getAttribute('data-mask')); } catch (e) { return; }
+  var LON0 = -128, LON1 = 22, LAT0 = 8, LAT1 = 66, HQ = [45.57, -73.69];
+  var DEST = [[43.65, -79.38, 't'], [41.88, -87.63, 't'], [32.78, -96.8, 't'], [19.43, -99.13, 't'], [49.28, -123.12, 't'], [34.05, -118.24, 't'], [25.76, -80.19, 't'], [39.96, -83.0, 't'], [44.65, -63.57, 't'],
+    [51.92, 4.48, 's'], [51.5, -0.12, 'p'], [48.86, 2.35, 'p']];
+  var LABELS = [[45.57, -73.69, 'LAVAL HQ', 1, 'right'], [51.5, -0.12, 'LONDON', 0, 'right'], [51.92, 4.48, 'ROTTERDAM'], [19.43, -99.13, 'MEXICO CITY'], [34.05, -118.24, 'LOS ANGELES'], [49.28, -123.12, 'VANCOUVER'], [32.78, -96.8, 'DALLAS'], [25.76, -80.19, 'MIAMI']];
+  var W = 0, H = 0, dpr = 1, dots = null, sx, sy, ox, oy, routes = [], vis = true, raf = 0, t0 = performance.now();
+  function proj(lat, lon) { return [ox + (lon - LON0) * sx, oy + (LAT1 - lat) * sy]; }
+  function size() {
+    var r = cv.getBoundingClientRect(); if (!r.width) return false;
+    dpr = Math.min(2, window.devicePixelRatio || 1); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    // cover the hero, keeping the map's shape; lean it right so the lanes sit beside the headline
+    // fit the whole span across the hero, centred on the lanes; taller screens (phones) zoom in a little
+    sx = Math.max(W / (LON1 - LON0), W < 700 ? 0 : H / 40 / 1.2); sy = sx * 1.2;
+    ox = (W - (LON1 - LON0) * sx) * .5; oy = H / 2 - (LAT1 - 40) * sy;
+    dots = document.createElement('canvas'); dots.width = cv.width; dots.height = cv.height; var q = dots.getContext('2d'); q.scale(dpr, dpr);
+    q.fillStyle = 'rgba(245,244,240,.2)'; var rr = Math.max(1, Math.min(2.6, sx * .26));
+    for (var i = 0; i < 180 * 90; i++) {
+      if (!(bin.charCodeAt(i >> 3) & (128 >> (i & 7)))) continue;
+      var lat = 90 - (Math.floor(i / 180) + .5) * 2, lon = -180 + (i % 180 + .5) * 2; if (lat < LAT0 - 4 || lat > LAT1 + 4 || lon < LON0 - 4 || lon > LON1 + 4) continue;
+      var p = proj(lat, lon); q.beginPath(); q.arc(p[0], p[1], rr, 0, 6.2832); q.fill();
+    }
+    var h = proj(HQ[0], HQ[1]);
+    routes = DEST.map(function (d, i) { var b = proj(d[0], d[1]), dx = b[0] - h[0], dy = b[1] - h[1], len = Math.hypot(dx, dy), bend = d[2] === 'p' ? .2 : d[2] === 's' ? .1 : .18;
+      return { a: h, b: b, c: [h[0] + dx / 2 + dy * bend * (i % 2 ? 1 : -1) * (d[2] === 't' ? 1 : -1), h[1] + dy / 2 - Math.abs(dx) * bend], k: d[2], sp: (d[2] === 'p' ? 5.5 : d[2] === 's' ? 16 : 7 + (i % 4)) * Math.max(1, len / 260), ph: i * .37 }; });
+    return true;
+  }
+  function at(r, u) { var m = 1 - u; return [m * m * r.a[0] + 2 * m * u * r.c[0] + u * u * r.b[0], m * m * r.a[1] + 2 * m * u * r.c[1] + u * u * r.b[1]]; }
+  function icon(k, x, y, ang) {
+    g.save(); g.translate(x, y); g.rotate(ang);
+    if (k === 'p') { g.fillStyle = '#f5f4f0'; g.beginPath(); g.moveTo(8, 0); g.lineTo(-6, -2); g.lineTo(-7, -7); g.lineTo(-4, -7); g.lineTo(-1, -2); g.lineTo(-1, 2); g.lineTo(-4, 7); g.lineTo(-7, 7); g.lineTo(-6, 2); g.closePath(); g.fill(); }
+    else if (k === 's') { g.fillStyle = '#7fc0f5'; g.beginPath(); g.moveTo(-8, -3); g.lineTo(7, -3); g.lineTo(9, 0); g.lineTo(7, 3); g.lineTo(-8, 3); g.closePath(); g.fill(); g.fillStyle = '#ffac19'; g.fillRect(-5, -2, 3, 4); g.fillRect(-1, -2, 3, 4); }
+    else { g.fillStyle = '#ffac19'; g.fillRect(-6, -2.5, 8, 5); g.fillStyle = '#f5f4f0'; g.fillRect(2.5, -2.5, 3.5, 5); }
+    g.restore();
+  }
+  function frame(now) {
+    if (!dots) return; var tt = (now - t0) / 1000;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(dots, 0, 0); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    routes.forEach(function (r) {
+      g.strokeStyle = r.k === 'p' ? 'rgba(245,244,240,.28)' : r.k === 's' ? 'rgba(127,192,245,.35)' : 'rgba(255,172,25,.32)'; g.lineWidth = r.k === 't' ? 1.4 : 1.2;
+      g.setLineDash(r.k === 'p' ? [2, 5] : r.k === 's' ? [6, 4] : []); g.beginPath(); g.moveTo(r.a[0], r.a[1]); g.quadraticCurveTo(r.c[0], r.c[1], r.b[0], r.b[1]); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(245,244,240,.55)'; g.beginPath(); g.arc(r.b[0], r.b[1], 2.2, 0, 6.2832); g.fill();
+      var u = reduce ? .62 : ((tt / r.sp + r.ph) % 1), p = at(r, u), p2 = at(r, Math.min(1, u + .01));
+      if (!reduce) { for (var k = 1; k < 7; k++) { var tp = at(r, Math.max(0, u - k * .012)); g.fillStyle = (r.k === 's' ? 'rgba(127,192,245,' : r.k === 'p' ? 'rgba(245,244,240,' : 'rgba(255,172,25,') + (.35 - k * .05) + ')'; g.beginPath(); g.arc(tp[0], tp[1], 1.6, 0, 6.2832); g.fill(); } }
+      icon(r.k, p[0], p[1], Math.atan2(p2[1] - p[1], p2[0] - p[0]));
+    });
+    g.font = '600 10px ui-monospace, Menlo, Consolas, monospace'; g.textBaseline = 'middle';
+    LABELS.forEach(function (l) { if (W < 700 && /DALLAS|LOS|ROTT/.test(l[2])) return; var p = proj(l[0], l[1]); g.fillStyle = l[3] ? '#ffac19' : 'rgba(245,244,240,.6)'; g.textAlign = l[4] || 'left'; g.fillText(l[2], p[0] + (l[4] === 'right' ? -8 : 8), p[1]); });
+    var h = proj(HQ[0], HQ[1]), pulse = reduce ? .5 : (tt % 2) / 2;
+    g.strokeStyle = 'rgba(255,172,25,' + (1 - pulse) * .8 + ')'; g.lineWidth = 2; g.beginPath(); g.arc(h[0], h[1], 4 + pulse * 18, 0, 6.2832); g.stroke();
+    g.fillStyle = '#ffac19'; g.beginPath(); g.arc(h[0], h[1], 4.5, 0, 6.2832); g.fill();
+    if (!reduce && vis) raf = requestAnimationFrame(frame);
+  }
+  function start() { cancelAnimationFrame(raf); if (size()) raf = requestAnimationFrame(frame); }
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { vis = es[0].isIntersecting; if (vis && !reduce) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); } }).observe(cv);
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(start, 150); });
+  start();
+})();
+
+/* quote form: a temperature slider for reefer loads (fills the hidden "temp" field) */
+(function () {
+  document.querySelectorAll('.tslide').forEach(function (box) {
+    var r = box.querySelector('input[type=range]'), hid = box.querySelector('input[type=hidden]'), big = box.querySelector('.ts-o b'), small = box.querySelector('.ts-o span'), Z;
+    try { Z = JSON.parse(box.getAttribute('data-z')); } catch (e) { return; }
+    var form = box.closest('form'), eq = form && form.querySelector('select[name=equipment]');
+    function zone(v) { return v <= -15 ? Z[0] : v < 0 ? Z[1] : v <= 8 ? Z[2] : Z[3]; }
+    function upd() {
+      var v = +r.value, s = (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + ' °C', f = Math.round(v * 9 / 5 + 32), fs = (f < 0 ? '−' : '') + Math.abs(f) + ' °F';
+      big.textContent = s; small.textContent = fs + ' · ' + zone(v); hid.value = box.hidden ? '' : s + ' / ' + fs + ' (' + zone(v) + ')';
+      var k = (v - +r.min) / (+r.max - +r.min); box.style.setProperty('--k', k);
+      box.setAttribute('data-band', v <= -15 ? 'deep' : v < 0 ? 'frozen' : v <= 8 ? 'chill' : 'amb');
+    }
+    function showFor() { if (!eq) return; box.hidden = eq.selectedIndex !== 0; upd(); }
+    r.addEventListener('input', upd); if (eq) eq.addEventListener('change', showFor);
+    if (form) form.addEventListener('reset', function () { setTimeout(function () { r.value = r.defaultValue; showFor(); }, 0); });
+    showFor();
+  });
 })();
