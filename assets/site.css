@@ -514,6 +514,13 @@ html { scroll-padding-top: 88px; }
 .lanes-band { position: relative; height: clamp(220px, 30vw, 400px); background: radial-gradient(120% 90% at 50% 40%, #232324 0%, #161617 100%); overflow: hidden; border-bottom: 1px solid #333; }
 .lanes-band::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #161617 0, transparent 8%, transparent 92%, #161617 100%); }
 .hero-map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* the band now sits behind the hero: fill it, keep the headline readable, keep the content and the paint stripe on top */
+.hero .lanes-band { position: absolute; inset: 0; height: auto; z-index: 0; background: none; border: 0; }
+.hero .lanes-band::after { background: linear-gradient(90deg, rgba(43,43,44,.78) 0%, rgba(43,43,44,.55) 34%, rgba(43,43,44,.12) 58%, rgba(43,43,44,0) 100%); }
+.hero .wrap { position: relative; z-index: 1; }
+.hero::after { z-index: 1; }
+.hero .board { background: rgba(26,26,27,.82); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+@media (max-width: 920px) { .hero .lanes-band::after { background: linear-gradient(180deg, rgba(43,43,44,.72) 0%, rgba(43,43,44,.55) 55%, rgba(43,43,44,.35) 100%); } }
 
 /* quote form: reefer temperature slider */
 .tslide .ts { display: flex; flex-direction: column-reverse; gap: 10px; margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }

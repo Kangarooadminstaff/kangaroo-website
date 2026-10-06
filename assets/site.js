@@ -108,12 +108,15 @@
 /* hero backdrop: our lanes across North America and the Atlantic. Trucks run the highways, a ship heads down the St. Lawrence to Europe, a plane crosses to London. */
 (function () {
   var cv = document.querySelector('.hero-map'); if (!cv || !cv.getContext) return;
+  var inHero = !!(cv.closest && cv.closest('.hero')); // behind the hero: fit the width and put Laval HQ in the open space between the headline and the dispatch board
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var g = cv.getContext('2d'), bin; try { bin = atob(cv.getAttribute('data-mask')); } catch (e) { return; }
   var LON0 = -128, LON1 = 22, LAT0 = 8, LAT1 = 66, HQ = [45.57, -73.69];
-  var DEST = [[43.65, -79.38, 't'], [41.88, -87.63, 't'], [32.78, -96.8, 't'], [19.43, -99.13, 't'], [49.28, -123.12, 't'], [34.05, -118.24, 't'], [25.76, -80.19, 't'], [39.96, -83.0, 't'], [44.65, -63.57, 't'],
+  var DEST = [[43.65, -79.38, 't'], [41.88, -87.63, 't'], [32.78, -96.8, 't'], [19.43, -99.13, 't'], [49.28, -123.12, 't'], [34.05, -118.24, 't'], [25.76, -80.19, 't'], [41.65, -83.54, 't'], [44.65, -63.57, 't'],
     [51.92, 4.48, 's'], [51.5, -0.12, 'p'], [48.86, 2.35, 'p']];
   var LABELS = [[45.57, -73.69, 'LAVAL HQ', 1, 'right'], [51.5, -0.12, 'LONDON', 0, 'right'], [51.92, 4.48, 'ROTTERDAM'], [19.43, -99.13, 'MEXICO CITY'], [34.05, -118.24, 'LOS ANGELES'], [49.28, -123.12, 'VANCOUVER'], [32.78, -96.8, 'DALLAS'], [25.76, -80.19, 'MIAMI']];
+  // Toledo, Ohio: new branch, opening soon (hollow dashed dot, its own label)
+  var SOON = [41.65, -83.54], SOONTXT = 'TOLEDO, OH · ' + ({ fr: 'BIENTÔT', en: 'OPENING SOON', es: 'PRÓXIMAMENTE', it: 'PROSSIMAMENTE', pa: 'ਜਲਦੀ', zh: '即将开业' }[(document.documentElement.lang || 'fr').slice(0, 2)] || 'OPENING SOON');
   var W = 0, H = 0, dpr = 1, dots = null, sx, sy, ox, oy, routes = [], vis = true, raf = 0, t0 = performance.now();
   function proj(lat, lon) { return [ox + (lon - LON0) * sx, oy + (LAT1 - lat) * sy]; }
   function size() {
@@ -121,8 +124,8 @@
     dpr = Math.min(2, window.devicePixelRatio || 1); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     // cover the hero, keeping the map's shape; lean it right so the lanes sit beside the headline
     // fit the whole span across the hero, centred on the lanes; taller screens (phones) zoom in a little
-    sx = Math.max(W / (LON1 - LON0), W < 700 ? 0 : H / 40 / 1.2); sy = sx * 1.2;
-    ox = (W - (LON1 - LON0) * sx) * .5; oy = H / 2 - (LAT1 - 40) * sy;
+    sx = inHero ? W / (LON1 - LON0) * (W < 920 ? 1.35 : 1.15) : Math.max(W / (LON1 - LON0), W < 700 ? 0 : H / 40 / 1.2); sy = sx * 1.2;
+    ox = inHero ? W * (W < 920 ? .62 : .54) - (HQ[1] - LON0) * sx : (W - (LON1 - LON0) * sx) * .5; oy = inHero ? H * (W < 920 ? .5 : .34) - (LAT1 - HQ[0]) * sy : H / 2 - (LAT1 - 40) * sy;
     dots = document.createElement('canvas'); dots.width = cv.width; dots.height = cv.height; var q = dots.getContext('2d'); q.scale(dpr, dpr);
     q.fillStyle = 'rgba(245,244,240,.2)'; var rr = Math.max(1, Math.min(2.6, sx * .26));
     for (var i = 0; i < 180 * 90; i++) {
@@ -133,6 +136,11 @@
     var h = proj(HQ[0], HQ[1]);
     routes = DEST.map(function (d, i) { var b = proj(d[0], d[1]), dx = b[0] - h[0], dy = b[1] - h[1], len = Math.hypot(dx, dy), bend = d[2] === 'p' ? .2 : d[2] === 's' ? .1 : .18;
       return { a: h, b: b, c: [h[0] + dx / 2 + dy * bend * (i % 2 ? 1 : -1) * (d[2] === 't' ? 1 : -1), h[1] + dy / 2 - Math.abs(dx) * bend], k: d[2], sp: (d[2] === 'p' ? 5.5 : d[2] === 's' ? 16 : 7 + (i % 4)) * Math.max(1, len / 260), ph: i * .37 }; });
+    // ships crossing the Atlantic both ways (not tied to Laval): Halifax > Rotterdam, New York > Le Havre, Antwerp > Quebec City, Southampton > Boston
+    [[44.65, -63.57, 51.92, 4.48], [40.6, -73.9, 49.49, 0.11], [51.22, 4.4, 46.81, -71.21], [50.9, -1.4, 42.36, -71.05]].forEach(function (o, i) {
+      var a = proj(o[0], o[1]), b = proj(o[2], o[3]), dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+      routes.push({ a: a, b: b, c: [a[0] + dx / 2, a[1] + dy / 2 - Math.abs(dx) * (inHero ? .3 : .09)], k: 's', sp: (17 + i * 3) * Math.max(1, len / 260), ph: .12 + i * .29 });
+    });
     return true;
   }
   function at(r, u) { var m = 1 - u; return [m * m * r.a[0] + 2 * m * u * r.c[0] + u * u * r.b[0], m * m * r.a[1] + 2 * m * u * r.c[1] + u * u * r.b[1]]; }
@@ -156,6 +164,11 @@
     });
     g.font = '600 10px ui-monospace, Menlo, Consolas, monospace'; g.textBaseline = 'middle';
     LABELS.forEach(function (l) { if (W < 700 && /DALLAS|LOS|ROTT/.test(l[2])) return; var p = proj(l[0], l[1]); g.fillStyle = l[3] ? '#ffac19' : 'rgba(245,244,240,.6)'; g.textAlign = l[4] || 'left'; g.fillText(l[2], p[0] + (l[4] === 'right' ? -8 : 8), p[1]); });
+    var so = proj(SOON[0], SOON[1]), sp = reduce ? .5 : (tt % 3) / 3;
+    g.strokeStyle = 'rgba(255,172,25,' + (1 - sp) * .55 + ')'; g.lineWidth = 1.5; g.beginPath(); g.arc(so[0], so[1], 4 + sp * 12, 0, 6.2832); g.stroke();
+    g.setLineDash([2, 2]); g.strokeStyle = '#ffac19'; g.lineWidth = 1.5; g.beginPath(); g.arc(so[0], so[1], 5, 0, 6.2832); g.stroke(); g.setLineDash([]);
+    g.fillStyle = 'rgba(255,172,25,.35)'; g.beginPath(); g.arc(so[0], so[1], 2.5, 0, 6.2832); g.fill();
+    g.fillStyle = '#ffac19'; g.textAlign = 'right'; g.fillText(SOONTXT, so[0] - 10, so[1] + 12);
     var h = proj(HQ[0], HQ[1]), pulse = reduce ? .5 : (tt % 2) / 2;
     g.strokeStyle = 'rgba(255,172,25,' + (1 - pulse) * .8 + ')'; g.lineWidth = 2; g.beginPath(); g.arc(h[0], h[1], 4 + pulse * 18, 0, 6.2832); g.stroke();
     g.fillStyle = '#ffac19'; g.beginPath(); g.arc(h[0], h[1], 4.5, 0, 6.2832); g.fill();
