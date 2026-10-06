@@ -119,13 +119,15 @@
   var SOON = [41.65, -83.54], SOONTXT = 'TOLEDO, OH · ' + ({ fr: 'BIENTÔT', en: 'OPENING SOON', es: 'PRÓXIMAMENTE', it: 'PROSSIMAMENTE', pa: 'ਜਲਦੀ', zh: '即将开业' }[(document.documentElement.lang || 'fr').slice(0, 2)] || 'OPENING SOON');
   var W = 0, H = 0, dpr = 1, dots = null, sx, sy, ox, oy, routes = [], vis = true, raf = 0, t0 = performance.now();
   function proj(lat, lon) { return [ox + (lon - LON0) * sx, oy + (LAT1 - lat) * sy]; }
+  // behind the hero: Laval HQ sits just left of the dispatch board (side-by-side layout) or right of centre (stacked phone layout)
+  function hqX(r) { var bd = W >= 920 && cv.closest('.hero').querySelector('.board'); if (bd) { var b = bd.getBoundingClientRect(); if (b.width) return Math.max(W * .4, b.left - r.left - 34); } return W * (W < 920 ? .62 : .54); }
   function size() {
     var r = cv.getBoundingClientRect(); if (!r.width) return false;
     dpr = Math.min(2, window.devicePixelRatio || 1); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     // cover the hero, keeping the map's shape; lean it right so the lanes sit beside the headline
     // fit the whole span across the hero, centred on the lanes; taller screens (phones) zoom in a little
     sx = inHero ? W / (LON1 - LON0) * (W < 920 ? 1.35 : 1.15) : Math.max(W / (LON1 - LON0), W < 700 ? 0 : H / 40 / 1.2); sy = sx * 1.2;
-    ox = inHero ? W * (W < 920 ? .62 : .54) - (HQ[1] - LON0) * sx : (W - (LON1 - LON0) * sx) * .5; oy = inHero ? H * (W < 920 ? .5 : .34) - (LAT1 - HQ[0]) * sy : H / 2 - (LAT1 - 40) * sy;
+    ox = inHero ? hqX(r) - (HQ[1] - LON0) * sx : (W - (LON1 - LON0) * sx) * .5; oy = inHero ? H * (W < 920 ? .5 : .34) - (LAT1 - HQ[0]) * sy : H / 2 - (LAT1 - 40) * sy;
     dots = document.createElement('canvas'); dots.width = cv.width; dots.height = cv.height; var q = dots.getContext('2d'); q.scale(dpr, dpr);
     q.fillStyle = 'rgba(245,244,240,.2)'; var rr = Math.max(1, Math.min(2.6, sx * .26));
     for (var i = 0; i < 180 * 90; i++) {
