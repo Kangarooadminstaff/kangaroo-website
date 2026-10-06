@@ -7,6 +7,20 @@
   if (mb) mb.addEventListener('click', function () { var o = nav.classList.toggle('open'); mb.setAttribute('aria-expanded', o ? 'true' : 'false'); });
   if (nav) nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') { nav.classList.remove('open'); mb && mb.setAttribute('aria-expanded', 'false'); } });
 
+  // header dropdowns (language, login): close on a click or tap elsewhere, on Esc, when the other one opens,
+  // and about a second after the mouse leaves (coming back cancels it)
+  var dds = document.querySelectorAll('header details.langs, header details.logins');
+  Array.prototype.forEach.call(dds, function (d) {
+    var tm = 0;
+    function shut() { clearTimeout(tm); d.removeAttribute('open'); }
+    d.addEventListener('toggle', function () { if (!d.open) return; Array.prototype.forEach.call(dds, function (o) { if (o !== d) o.removeAttribute('open'); }); });
+    d.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && d.open) { clearTimeout(tm); tm = setTimeout(shut, 1000); } });
+    d.addEventListener('pointerenter', function () { clearTimeout(tm); });
+    d.addEventListener('focusout', function (e) { if (d.open && e.relatedTarget && !d.contains(e.relatedTarget)) shut(); });
+    d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && d.open) { shut(); var s = d.querySelector('summary'); s && s.focus(); } });
+  });
+  if (dds.length) document.addEventListener('click', function (e) { Array.prototype.forEach.call(dds, function (d) { if (d.open && !d.contains(e.target)) d.removeAttribute('open'); }); });
+
   // dispatch board: statuses advance every few seconds (sample lanes)
   var lanes = document.querySelectorAll('.lane'), order = ['ld', 'go', 'ok'];
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
