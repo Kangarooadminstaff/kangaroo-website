@@ -141,7 +141,7 @@
     // cover the hero, keeping the map's shape; lean it right so the lanes sit beside the headline
     // fit the whole span across the hero, centred on the lanes; taller screens (phones) zoom in a little
     sx = inHero ? W / (LON1 - LON0) * (W < 920 ? 1.35 : 1.15) : Math.max(W / (LON1 - LON0), W < 700 ? 0 : H / 40 / 1.2); sy = sx * 1.2;
-    ox = inHero ? hqX(r) - (HQ[1] - LON0) * sx : (W - (LON1 - LON0) * sx) * .5; oy = inHero ? H * (W < 920 ? .5 : .34) - (LAT1 - HQ[0]) * sy : H / 2 - (LAT1 - 40) * sy;
+    ox = inHero ? hqX(r) - (HQ[1] - LON0) * sx : (W - (LON1 - LON0) * sx) * .5; oy = inHero ? H * (W < 920 ? .62 : .34) - (LAT1 - HQ[0]) * sy : H / 2 - (LAT1 - 40) * sy;
     dots = document.createElement('canvas'); dots.width = cv.width; dots.height = cv.height; var q = dots.getContext('2d'); q.scale(dpr, dpr);
     q.fillStyle = 'rgba(245,244,240,.2)'; var rr = Math.max(1, Math.min(2.6, sx * .26));
     for (var i = 0; i < 180 * 90; i++) {
@@ -179,12 +179,13 @@
       icon(r.k, p[0], p[1], Math.atan2(p2[1] - p[1], p2[0] - p[0]));
     });
     g.font = '600 10px ui-monospace, Menlo, Consolas, monospace'; g.textBaseline = 'middle';
-    LABELS.forEach(function (l) { if (W < 700 && /DALLAS|LOS|ROTT/.test(l[2])) return; var p = proj(l[0], l[1]); g.fillStyle = l[3] ? '#ffac19' : 'rgba(245,244,240,.6)'; g.textAlign = l[4] || 'left'; g.fillText(l[2], p[0] + (l[4] === 'right' ? -8 : 8), p[1]); });
+    // behind the hero, city names would print over the headline: keep only LAVAL HQ (desktop), and no labels on phones
+    LABELS.forEach(function (l) { if (W < 700 && /DALLAS|LOS|ROTT/.test(l[2])) return; if (inHero && (W < 920 || !l[3])) return; var p = proj(l[0], l[1]); g.fillStyle = l[3] ? '#ffac19' : 'rgba(245,244,240,.6)'; g.textAlign = l[4] || 'left'; g.fillText(l[2], p[0] + (l[4] === 'right' ? (inHero ? -16 : -8) : 8), p[1]); });
     var so = proj(SOON[0], SOON[1]), sp = reduce ? .5 : (tt % 3) / 3;
     g.strokeStyle = 'rgba(255,172,25,' + (1 - sp) * .55 + ')'; g.lineWidth = 1.5; g.beginPath(); g.arc(so[0], so[1], 4 + sp * 12, 0, 6.2832); g.stroke();
     g.setLineDash([2, 2]); g.strokeStyle = '#ffac19'; g.lineWidth = 1.5; g.beginPath(); g.arc(so[0], so[1], 5, 0, 6.2832); g.stroke(); g.setLineDash([]);
     g.fillStyle = 'rgba(255,172,25,.35)'; g.beginPath(); g.arc(so[0], so[1], 2.5, 0, 6.2832); g.fill();
-    g.fillStyle = '#ffac19'; g.textAlign = 'right'; g.fillText(SOONTXT, so[0] - 10, so[1] + 12);
+    if (!inHero || W >= 920) { g.fillStyle = '#ffac19'; g.textAlign = 'right'; g.fillText(SOONTXT, so[0] - 10, so[1] + 12); }
     var h = proj(HQ[0], HQ[1]), pulse = reduce ? .5 : (tt % 2) / 2;
     g.strokeStyle = 'rgba(255,172,25,' + (1 - pulse) * .8 + ')'; g.lineWidth = 2; g.beginPath(); g.arc(h[0], h[1], 4 + pulse * 18, 0, 6.2832); g.stroke();
     g.fillStyle = '#ffac19'; g.beginPath(); g.arc(h[0], h[1], 4.5, 0, 6.2832); g.fill();
