@@ -25,11 +25,6 @@
       "statusCode": 302
     },
     {
-      "route": "/rootrax*",
-      "redirect": "https://rootrax-kangaroo.azurewebsites.net/",
-      "statusCode": 302
-    },
-    {
       "route": "/assets/*",
       "headers": {
         "cache-control": "public, max-age=86400"
