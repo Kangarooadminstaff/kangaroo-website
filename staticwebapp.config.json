@@ -25,6 +25,21 @@
       "statusCode": 302
     },
     {
+      "route": "/warehouse",
+      "redirect": "https://brave-island-056321110.3.azurestaticapps.net/",
+      "statusCode": 302
+    },
+    {
+      "route": "/warehouse/*",
+      "redirect": "https://brave-island-056321110.3.azurestaticapps.net/",
+      "statusCode": 302
+    },
+    {
+      "route": "/entrepot",
+      "redirect": "https://brave-island-056321110.3.azurestaticapps.net/",
+      "statusCode": 302
+    },
+    {
       "route": "/assets/*",
       "headers": {
         "cache-control": "public, max-age=86400"
